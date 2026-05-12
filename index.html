@@ -1,0 +1,636 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>谈资 BD 调研工具 · v0.2</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Helvetica Neue", Arial, sans-serif;
+    background: #FAFAF7;
+    color: #1A1A1A;
+    line-height: 1.6;
+    padding: 24px 16px 60px;
+    min-height: 100vh;
+  }
+  .container { max-width: 760px; margin: 0 auto; }
+
+  .header { display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 8px; }
+  .header h1 { font-size: 22px; font-weight: 600; letter-spacing: -0.3px; }
+  .header .version { font-size: 11px; color: #999; }
+  .subtitle { font-size: 13px; color: #666; margin-bottom: 28px; }
+
+  .card {
+    background: #fff;
+    border: 0.5px solid #E5E5E0;
+    border-radius: 12px;
+    padding: 20px 22px;
+    margin-bottom: 16px;
+  }
+  .card-title {
+    font-size: 13px; font-weight: 500; color: #666;
+    margin-bottom: 12px; display: flex; align-items: center; gap: 6px;
+  }
+
+  .api-key-section {
+    background: #FFF8E7;
+    border: 0.5px solid #F0D080;
+    border-radius: 8px;
+    padding: 12px 14px;
+    margin-bottom: 16px;
+    font-size: 12px;
+    color: #6B4F0F;
+  }
+  .api-key-section input, .api-key-section select {
+    padding: 8px 10px;
+    border: 0.5px solid #E5D080;
+    border-radius: 6px;
+    font-size: 12px;
+    background: #fff;
+    font-family: ui-monospace, "SF Mono", monospace;
+  }
+  .api-key-section select { font-family: inherit; }
+  .api-key-section a { color: #B07020; text-decoration: underline; }
+  .api-key-saved { color: #2A8050; font-weight: 500; }
+  .api-provider-row { display: flex; gap: 8px; margin-top: 8px; }
+  .api-provider-row select { flex: 0 0 130px; }
+  .api-provider-row input { flex: 1; }
+
+  input[type="text"], input[type="password"], textarea {
+    width: 100%;
+    padding: 10px 12px;
+    border: 0.5px solid #D5D5D0;
+    border-radius: 8px;
+    font-size: 14px;
+    background: #fff;
+    transition: border-color 0.2s;
+    font-family: inherit;
+  }
+  input:focus, textarea:focus { outline: none; border-color: #2A2A2A; }
+  textarea { resize: vertical; min-height: 60px; }
+
+  .quick-buttons { display: flex; flex-wrap: wrap; gap: 6px; margin: 10px 0 14px; }
+  .quick-btn {
+    padding: 5px 11px;
+    font-size: 12px;
+    background: #F0F0EB;
+    border: 0.5px solid #E0E0DA;
+    border-radius: 14px;
+    cursor: pointer;
+    transition: all 0.15s;
+    color: #444;
+  }
+  .quick-btn:hover { background: #E5E5E0; }
+
+  .submit-btn {
+    width: 100%;
+    padding: 12px;
+    background: #1A1A1A;
+    color: #fff;
+    border: none;
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .submit-btn:hover:not(:disabled) { background: #333; }
+  .submit-btn:disabled { background: #999; cursor: not-allowed; }
+
+  .input-row { margin-bottom: 10px; }
+  .input-row:last-of-type { margin-bottom: 14px; }
+
+  .status-box {
+    display: none;
+    padding: 14px 16px;
+    background: #F5F5F0;
+    border-radius: 8px;
+    margin-bottom: 16px;
+    font-size: 13px;
+    color: #666;
+  }
+  .loading-dot {
+    display: inline-block;
+    width: 6px; height: 6px;
+    border-radius: 50%;
+    background: #999;
+    margin-right: 4px;
+    animation: pulse 1.4s infinite ease-in-out;
+  }
+  .loading-dot:nth-child(2) { animation-delay: 0.2s; }
+  .loading-dot:nth-child(3) { animation-delay: 0.4s; }
+  @keyframes pulse { 0%, 80%, 100% { opacity: 0.3; } 40% { opacity: 1; } }
+
+  .section-header {
+    font-size: 13px; font-weight: 500; color: #666;
+    margin: 24px 0 10px;
+    display: flex; align-items: center; gap: 6px;
+  }
+
+  .result-block {
+    background: #F5F5F0;
+    border-radius: 8px;
+    padding: 16px 18px;
+    margin-bottom: 12px;
+  }
+  .result-block h3 { font-size: 15px; font-weight: 600; margin-bottom: 10px; }
+  .result-block p { font-size: 13px; line-height: 1.7; }
+
+  .tag {
+    display: inline-block;
+    font-size: 11px;
+    padding: 3px 9px;
+    border-radius: 4px;
+    margin-right: 4px;
+    margin-bottom: 4px;
+  }
+  .tag-info { background: #E8F0FA; color: #1A4A85; }
+  .tag-warn { background: #FAF0E0; color: #8A5A10; }
+  .tag-success { background: #E5F0E5; color: #2A5A2A; }
+
+  .label { font-size: 11px; color: #888; margin: 10px 0 4px; }
+  .value { font-size: 13px; }
+  .key-facts { font-size: 13px; padding-left: 20px; line-height: 1.8; }
+
+  .direction-card {
+    background: #fff;
+    border: 0.5px solid #E0E0DA;
+    border-radius: 8px;
+    padding: 16px 18px;
+    margin-bottom: 10px;
+  }
+  .direction-title { font-size: 14px; font-weight: 600; margin-bottom: 8px; }
+  .resource-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 11px;
+    padding: 4px 9px;
+    border-radius: 4px;
+    background: #EEF1F8;
+    color: #2A3A6A;
+    margin-bottom: 8px;
+  }
+  .direction-concept { font-size: 13px; line-height: 1.7; margin-bottom: 8px; color: #2A2A2A; }
+  .direction-why {
+    font-size: 12px;
+    color: #666;
+    border-top: 0.5px solid #F0F0EB;
+    padding-top: 8px;
+  }
+
+  .action-buttons { display: flex; gap: 8px; margin-top: 16px; }
+  .action-btn {
+    flex: 1;
+    padding: 10px;
+    background: #fff;
+    border: 0.5px solid #D5D5D0;
+    border-radius: 8px;
+    font-size: 12px;
+    cursor: pointer;
+    transition: all 0.15s;
+    color: #2A2A2A;
+  }
+  .action-btn:hover { background: #F5F5F0; }
+  .action-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+  .extra-output {
+    margin-top: 12px;
+    background: #fff;
+    border: 0.5px solid #E0E0DA;
+    border-radius: 8px;
+    padding: 16px 18px;
+    font-size: 13px;
+    line-height: 1.7;
+    white-space: pre-wrap;
+    display: none;
+    color: #2A2A2A;
+  }
+
+  details { margin-top: 24px; font-size: 12px; color: #666; }
+  details summary { cursor: pointer; padding: 10px 0; user-select: none; }
+  details .details-content { padding: 10px 4px; line-height: 1.8; }
+  details strong { font-weight: 500; color: #333; }
+
+  .error-box {
+    background: #FAEAEA;
+    border: 0.5px solid #E5B0B0;
+    color: #8A2A2A;
+    padding: 12px 14px;
+    border-radius: 8px;
+    font-size: 13px;
+    margin-bottom: 16px;
+    display: none;
+  }
+
+  .footer { text-align: center; font-size: 11px; color: #999; margin-top: 32px; }
+</style>
+</head>
+<body>
+
+<div class="container">
+
+  <div class="header">
+    <h1>谈资 BD 调研工具</h1>
+    <span class="version">v0.2 · prototype</span>
+  </div>
+  <p class="subtitle">输入一个品牌名 → 2 分钟出品牌画像、行业洞察、结合谈资资源矩阵的合作方向</p>
+
+  <div class="api-key-section">
+    <div>选择 AI 提供商并填入 API Key（仅保存在浏览器本地，不会上传）。推荐使用 <a href="https://platform.deepseek.com/" target="_blank">DeepSeek</a>，对中文调研友好且价格便宜；也支持 <a href="https://console.anthropic.com/" target="_blank">Anthropic Claude</a>。</div>
+    <div class="api-provider-row">
+      <select id="api-provider">
+        <option value="deepseek">DeepSeek</option>
+        <option value="anthropic">Anthropic</option>
+      </select>
+      <input type="password" id="api-key-input" placeholder="sk-..." />
+    </div>
+    <div style="margin-top: 8px; display: flex; justify-content: space-between; align-items: center;">
+      <span id="api-key-status" style="font-size: 11px;"></span>
+      <button id="save-key-btn" style="padding: 4px 10px; font-size: 11px; background: #fff; border: 0.5px solid #E5D080; border-radius: 4px; cursor: pointer; color: #6B4F0F;">保存</button>
+    </div>
+  </div>
+
+  <div class="card">
+    <p class="card-title">调研输入</p>
+    <div class="input-row">
+      <input type="text" id="brand-input" placeholder="品牌名（例：lululemon、霸王茶姬、观夏、蕉下）" />
+    </div>
+    <div class="input-row">
+      <input type="text" id="context-input" placeholder="补充信息（可选：行业、来访目的、已知诉求等）" />
+    </div>
+
+    <div class="quick-buttons">
+      <button class="quick-btn" data-brand="lululemon" data-context="想了解和谈资在成都本地的合作可能">lululemon</button>
+      <button class="quick-btn" data-brand="霸王茶姬" data-context="新茶饮品牌，想做城市营销">霸王茶姬</button>
+      <button class="quick-btn" data-brand="观夏" data-context="高端香氛品牌，关注内容调性匹配">观夏</button>
+      <button class="quick-btn" data-brand="蕉下" data-context="户外生活方式品牌">蕉下</button>
+      <button class="quick-btn" data-brand="始祖鸟" data-context="高端户外，关注城市生活方式">始祖鸟</button>
+    </div>
+
+    <button class="submit-btn" id="submit-btn">开始调研</button>
+  </div>
+
+  <div class="error-box" id="error-box"></div>
+
+  <div class="status-box" id="status-box">
+    <span class="loading-dot"></span>
+    <span class="loading-dot"></span>
+    <span class="loading-dot"></span>
+    <span id="status-text" style="margin-left: 6px;">正在调研...</span>
+  </div>
+
+  <div id="output"></div>
+
+  <details>
+    <summary>关于这个工具 · 设计思路</summary>
+    <div class="details-content">
+      <p style="margin-bottom: 10px;">这是针对谈资 BD 岗位场景设计的一个调研工具原型。</p>
+      <p style="margin-bottom: 10px;"><strong>解决的真实问题：</strong>BD 拿到一个品牌合作意向时，需要快速搞清楚"这个品牌是谁、行业在发生什么、谈资能给什么"。靠人工要花半天到一天，这个工具目标是压到 2 分钟。</p>
+      <p style="margin-bottom: 10px;"><strong>技术栈：</strong>支持 DeepSeek API 和 Anthropic Claude API 两种调用方式。前端是单个 HTML 文件，所有逻辑在 prompt 设计里。</p>
+      <p style="margin-bottom: 10px;"><strong>差异化设计：</strong>核心不是"调用 AI 做调研"——这事谁都能做。关键是 system prompt 里内置了谈资资源矩阵（主号、Big 榜、看好戏、在场up、「在场」App、城市营销、政企客户对接能力）。AI 每次输出合作方向时必须从这个矩阵里选具体资源，给出的是"用 X 资源做 X 事"而不是泛泛建议。</p>
+      <p><strong>下一步可以做的：</strong>接入实时联网搜索（Tavily/SerpAPI）、历史调研记录、导出 PPT 提案、资源矩阵管理（让 BD 团队可编辑）、批量调研。</p>
+    </div>
+  </details>
+
+  <div class="footer">Made with AI · 2026.05</div>
+
+</div>
+
+<script>
+const TANZI_RESOURCES = `谈资可用资源矩阵（合作方向必须基于这些资源给出具体建议，不要泛泛而谈）：
+
+【内容矩阵】
+- 谈资主号：综合娱乐、潮流话题，泛年轻群体，适合大众消费品种草
+- 成都 Big 榜：本地生活指南、消费排行，城市烟火气强，适合本地零售/餐饮/生活方式品牌
+- 谈资看好戏：影视综艺评论，适合影视联名、IP 合作
+- 谈资有营养：人文深度阅读，适合需要文化背书的品牌
+- 在场up（小红书账号）：户外、分享类活动内容，年轻化调性
+
+【平台型产品】
+- 「在场」App（2026年4月上线）：青年兴趣活动社交平台，999家机构入驻、Q1上线892场活动。适合需要做线下活动、社群运营、用户报名转化的品牌合作
+
+【商业服务能力】
+- 内容定制：基于账号矩阵的品牌内容植入
+- 活动执行：线下活动全案统筹（谈资团队 120 人）
+- 城市营销：成都本地资源整合，包括政务客户对接能力
+- 集团背书：成都传媒集团 → 红星传媒，可对接头部品牌和政府项目
+
+【独特优势】
+- 成都本地最深的内容渗透（10年沉淀、5000万+全网粉丝）
+- "内容→流量→活动→交易"的完整链路（通过「在场」实现）
+- 政企客户和市场化客户双线能力`;
+
+const SYSTEM_PROMPT_RESEARCH = `你是谈资 BD 团队的调研助理。给定一个品牌名，基于你对该品牌的公开认知，输出三块结构化内容。
+
+${TANZI_RESOURCES}
+
+输出必须是合法的 JSON 对象（不要 markdown 代码块包裹，不要任何解释文字，不要任何称呼或问候），结构如下：
+{
+  "brand_profile": {
+    "one_liner": "一句话总结这个品牌（20字内）",
+    "category": "所属品类（如：新茶饮/运动服饰/香氛）",
+    "stage": "品牌阶段（早期/成长期/成熟期/转型期）",
+    "key_facts": ["3-4个关键事实，每条15字内"],
+    "audience": "核心用户画像（30字内）",
+    "tone": "品牌调性（如：高冷/亲民/反叛/治愈）"
+  },
+  "industry_insight": {
+    "trend": "行业最近 6-12 个月的关键趋势（50字内）",
+    "competition": "主要竞品和差异化点（40字内）",
+    "opportunity": "对这个品牌来说当下最关键的机会点（40字内）"
+  },
+  "tanzi_directions": [
+    {
+      "title": "合作方向标题（10字内）",
+      "tanzi_resource": "用到的具体谈资资源（必须从矩阵中选）",
+      "concept": "具体合作方案描述（80字内，要具体到能落地的程度）",
+      "why_fit": "为什么这个方向适合该品牌（30字内）"
+    }
+  ]
+}
+
+要求：
+1. tanzi_directions 必须给3个方向，从不同资源切入、不重复
+2. 合作方向必须具体（"做一场城市市集"而不是"做内容合作"）
+3. 每个方向都明确写出用到的谈资资源
+4. 不要任何称呼、问候、客套话，直接输出 JSON`;
+
+const SYSTEM_PROMPT_EXTRA = `你是谈资 BD 团队的方案助理，基于已有调研深化内容。
+要求：
+1. 直接输出文字内容，不要 JSON
+2. 不要任何称呼（不写"您好""你好""Hi"或任何具体人名），不要客套话，直接进入正文
+3. 不要总结性的结尾问候
+4. 用谈资的语气：克制、专业、有判断力`;
+
+const apiProviderSelect = document.getElementById('api-provider');
+const apiKeyInput = document.getElementById('api-key-input');
+const apiKeyStatus = document.getElementById('api-key-status');
+const saveKeyBtn = document.getElementById('save-key-btn');
+const brandInput = document.getElementById('brand-input');
+const contextInput = document.getElementById('context-input');
+const submitBtn = document.getElementById('submit-btn');
+const statusBox = document.getElementById('status-box');
+const statusText = document.getElementById('status-text');
+const outputBox = document.getElementById('output');
+const errorBox = document.getElementById('error-box');
+
+const savedProvider = localStorage.getItem('tanzi_bd_provider') || 'deepseek';
+apiProviderSelect.value = savedProvider;
+const savedKey = localStorage.getItem('tanzi_bd_api_key_' + savedProvider);
+if (savedKey) {
+  apiKeyInput.value = savedKey;
+  apiKeyStatus.textContent = '已保存（' + savedKey.slice(0, 12) + '...）';
+  apiKeyStatus.className = 'api-key-saved';
+}
+
+apiProviderSelect.onchange = () => {
+  const provider = apiProviderSelect.value;
+  const key = localStorage.getItem('tanzi_bd_api_key_' + provider);
+  if (key) {
+    apiKeyInput.value = key;
+    apiKeyStatus.textContent = '已保存（' + key.slice(0, 12) + '...）';
+    apiKeyStatus.className = 'api-key-saved';
+  } else {
+    apiKeyInput.value = '';
+    apiKeyStatus.textContent = '';
+  }
+  localStorage.setItem('tanzi_bd_provider', provider);
+};
+
+saveKeyBtn.onclick = () => {
+  const k = apiKeyInput.value.trim();
+  const provider = apiProviderSelect.value;
+  if (!k) { apiKeyStatus.textContent = '请先输入 API Key'; apiKeyStatus.className = ''; return; }
+  localStorage.setItem('tanzi_bd_api_key_' + provider, k);
+  localStorage.setItem('tanzi_bd_provider', provider);
+  apiKeyStatus.textContent = '已保存（' + k.slice(0, 12) + '...）';
+  apiKeyStatus.className = 'api-key-saved';
+};
+
+document.querySelectorAll('.quick-btn').forEach(btn => {
+  btn.onclick = () => {
+    brandInput.value = btn.dataset.brand;
+    contextInput.value = btn.dataset.context;
+  };
+});
+
+function showError(msg) {
+  errorBox.textContent = msg;
+  errorBox.style.display = 'block';
+  setTimeout(() => { errorBox.style.display = 'none'; }, 10000);
+}
+
+async function callDeepSeek(apiKey, systemPrompt, userMsg) {
+  const response = await fetch("https://api.deepseek.com/v1/chat/completions", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer " + apiKey
+    },
+    body: JSON.stringify({
+      model: "deepseek-chat",
+      messages: [
+        { role: "system", content: systemPrompt },
+        { role: "user", content: userMsg }
+      ],
+      max_tokens: 2500,
+      temperature: 0.7
+    })
+  });
+
+  if (!response.ok) {
+    const errText = await response.text();
+    let errMsg = `DeepSeek API 调用失败（${response.status}）`;
+    try { const e = JSON.parse(errText); errMsg += '：' + (e.error?.message || errText); } catch { errMsg += '：' + errText; }
+    throw new Error(errMsg);
+  }
+
+  const data = await response.json();
+  return data.choices[0].message.content;
+}
+
+async function callAnthropic(apiKey, systemPrompt, userMsg) {
+  const response = await fetch("https://api.anthropic.com/v1/messages", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "x-api-key": apiKey,
+      "anthropic-version": "2023-06-01",
+      "anthropic-dangerous-direct-browser-access": "true"
+    },
+    body: JSON.stringify({
+      model: "claude-sonnet-4-20250514",
+      max_tokens: 2500,
+      system: systemPrompt,
+      messages: [{ role: "user", content: userMsg }]
+    })
+  });
+
+  if (!response.ok) {
+    const errText = await response.text();
+    let errMsg = `Anthropic API 调用失败（${response.status}）`;
+    try { const e = JSON.parse(errText); errMsg += '：' + (e.error?.message || errText); } catch { errMsg += '：' + errText; }
+    throw new Error(errMsg);
+  }
+
+  const data = await response.json();
+  return data.content.filter(b => b.type === "text").map(b => b.text).join("\n");
+}
+
+async function callAPI(systemPrompt, userMsg) {
+  const provider = localStorage.getItem('tanzi_bd_provider') || apiProviderSelect.value;
+  const apiKey = localStorage.getItem('tanzi_bd_api_key_' + provider) || apiKeyInput.value.trim();
+  if (!apiKey) throw new Error('请先填入 API Key');
+
+  if (provider === 'deepseek') {
+    return await callDeepSeek(apiKey, systemPrompt, userMsg);
+  } else {
+    return await callAnthropic(apiKey, systemPrompt, userMsg);
+  }
+}
+
+function renderResult(brand, result) {
+  const bp = result.brand_profile;
+  const ind = result.industry_insight;
+  const dirs = result.tanzi_directions || [];
+
+  const factsHtml = (bp.key_facts || []).map(f => `<li>${f}</li>`).join("");
+
+  const dirsHtml = dirs.map((d, i) => `
+    <div class="direction-card">
+      <div class="direction-title">方向 ${i + 1} · ${d.title}</div>
+      <span class="resource-pill">📦 ${d.tanzi_resource}</span>
+      <div class="direction-concept">${d.concept}</div>
+      <div class="direction-why">💡 适配理由：${d.why_fit}</div>
+    </div>
+  `).join("");
+
+  outputBox.innerHTML = `
+    <div class="section-header">🎯 品牌画像</div>
+    <div class="result-block">
+      <h3>${brand} · ${bp.one_liner}</h3>
+      <div style="margin: 8px 0 12px;">
+        <span class="tag tag-info">${bp.category}</span>
+        <span class="tag tag-warn">${bp.stage}</span>
+        <span class="tag tag-success">调性：${bp.tone}</span>
+      </div>
+      <div class="label">核心用户</div>
+      <div class="value">${bp.audience}</div>
+      <div class="label">关键事实</div>
+      <ul class="key-facts">${factsHtml}</ul>
+    </div>
+
+    <div class="section-header">📈 行业洞察</div>
+    <div class="result-block">
+      <div class="label">行业趋势</div>
+      <div class="value">${ind.trend}</div>
+      <div class="label">竞争格局</div>
+      <div class="value">${ind.competition}</div>
+      <div class="label">机会点</div>
+      <div class="value">${ind.opportunity}</div>
+    </div>
+
+    <div class="section-header">⚡ 谈资合作方向（基于资源矩阵）</div>
+    ${dirsHtml}
+
+    <div class="action-buttons">
+      <button class="action-btn" id="action-proposal">展开方向 1 的具体提案</button>
+      <button class="action-btn" id="action-email">生成破冰邮件</button>
+    </div>
+    <div class="extra-output" id="extra-output"></div>
+  `;
+
+  document.getElementById('action-proposal').onclick = () => runExtraTask(
+    `基于刚才的调研，针对 ${brand} 的方向 1 "${dirs[0].title}"（${dirs[0].concept}），展开一个具体的合作提案。要求包含：传播节奏（按周/月分阶段）、关键投放节点、可衡量的效果预估指标（曝光、互动、转化）。直接进入正文，不要任何称呼、问候或开场白。`,
+    'action-proposal'
+  );
+  document.getElementById('action-email').onclick = () => runExtraTask(
+    `准备一份发给 ${brand} 市场负责人的破冰邮件正文。要求：1) 前30字必须抓住对方注意力；2) 体现谈资在成都本地的差异化价值；3) 给出一个具体的合作切入点（参考方向 1：${dirs[0].title}）；4) 邮件简洁，正文不超过200字；5) 结尾邀约一次15分钟的电话沟通。直接输出邮件主题和正文两部分，落款用"——谈资 BD 团队"即可，不要写任何具体人名。`,
+    'action-email'
+  );
+}
+
+async function runExtraTask(taskPrompt, btnId) {
+  const provider = localStorage.getItem('tanzi_bd_provider') || apiProviderSelect.value;
+  const apiKey = localStorage.getItem('tanzi_bd_api_key_' + provider) || apiKeyInput.value.trim();
+  if (!apiKey) { showError('请先填入 API Key'); return; }
+
+  const btn = document.getElementById(btnId);
+  const extraOutput = document.getElementById('extra-output');
+  const originalText = btn.textContent;
+  btn.disabled = true;
+  btn.textContent = '生成中...';
+  extraOutput.style.display = 'block';
+  extraOutput.textContent = '正在生成...';
+
+  try {
+    const text = await callAPI(SYSTEM_PROMPT_EXTRA, taskPrompt);
+    extraOutput.textContent = text;
+  } catch (err) {
+    extraOutput.textContent = '生成失败：' + err.message;
+  } finally {
+    btn.disabled = false;
+    btn.textContent = originalText;
+  }
+}
+
+async function handleSubmit() {
+  const provider = localStorage.getItem('tanzi_bd_provider') || apiProviderSelect.value;
+  const apiKey = localStorage.getItem('tanzi_bd_api_key_' + provider) || apiKeyInput.value.trim();
+  if (!apiKey) { showError('请先填入并保存 API Key'); return; }
+
+  const brand = brandInput.value.trim();
+  if (!brand) { showError('请输入品牌名'); brandInput.focus(); return; }
+  const context = contextInput.value.trim();
+
+  submitBtn.disabled = true;
+  submitBtn.textContent = '调研中...';
+  statusBox.style.display = 'block';
+  outputBox.innerHTML = '';
+  errorBox.style.display = 'none';
+
+  const stages = [
+    '正在分析品牌公开信息...',
+    '正在分析行业趋势和竞争格局...',
+    '正在匹配谈资资源矩阵...',
+    '正在生成合作方向...'
+  ];
+  let stageIdx = 0;
+  statusText.textContent = stages[0];
+  const stageTimer = setInterval(() => {
+    stageIdx = (stageIdx + 1) % stages.length;
+    statusText.textContent = stages[stageIdx];
+  }, 2500);
+
+  const userMsg = context
+    ? `品牌：${brand}\n补充信息：${context}\n\n基于你对该品牌的公开认知，输出结构化调研结果。直接输出 JSON，不要任何前言或解释。`
+    : `品牌：${brand}\n\n基于你对该品牌的公开认知，输出结构化调研结果。直接输出 JSON，不要任何前言或解释。`;
+
+  try {
+    const rawText = await callAPI(SYSTEM_PROMPT_RESEARCH, userMsg);
+    clearInterval(stageTimer);
+    statusBox.style.display = 'none';
+
+    const jsonMatch = rawText.match(/\{[\s\S]*\}/);
+    if (!jsonMatch) throw new Error('AI 没有返回 JSON 格式，原始输出：' + rawText.slice(0, 200));
+    const result = JSON.parse(jsonMatch[0]);
+    renderResult(brand, result);
+  } catch (err) {
+    clearInterval(stageTimer);
+    statusBox.style.display = 'none';
+    showError('调研失败：' + err.message);
+  } finally {
+    submitBtn.disabled = false;
+    submitBtn.textContent = '开始调研';
+  }
+}
+
+submitBtn.onclick = handleSubmit;
+brandInput.addEventListener('keydown', e => { if (e.key === 'Enter') handleSubmit(); });
+contextInput.addEventListener('keydown', e => { if (e.key === 'Enter') handleSubmit(); });
+</script>
+
+</body>
+</html>
